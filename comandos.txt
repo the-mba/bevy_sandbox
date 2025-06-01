@@ -1,0 +1,4 @@
+# Para compilar para wasm:
+wasm-pack build --target web
+ó bien:
+cargo run --target wasm32-unknown-unknown

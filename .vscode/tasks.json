@@ -1,0 +1,21 @@
+{
+    // See https://code.visualstudio.com/docs/editor/tasks for more information
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Breakout",
+            "type": "shell",
+            "command": "cargo run --example breakout",
+        },
+        {
+            "label": "Run Breakout WASM",
+            "type": "shell",
+            "command": "cargo run --target wasm32-unknown-unknown --example breakout",
+        },
+        {
+            "label": "Recompilar wasm-server-runner desde fuentes locales",
+            "type": "shell",
+            "command": "cargo uninstall wasm-server-runner; cargo install --path ./crates/wasm-server-runner-1.0.0",
+        },
+    ]
+}
