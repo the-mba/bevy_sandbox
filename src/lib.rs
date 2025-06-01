@@ -201,7 +201,10 @@ struct PaddleBundle {
 impl Default for PaddleBundle {
     fn default() -> Self {
         Self {
-            sprite: Sprite::from_color(PADDLE_COLOR, Vec2::ONE),
+            sprite: Sprite {
+                color: PADDLE_COLOR,
+                ..default()
+            },
             transform: Transform {
                 translation: Vec3::new(0.0, 0.0, 0.0),
                 scale: PADDLE_SIZE.extend(1.0),
