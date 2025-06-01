@@ -238,6 +238,32 @@ impl BallBundle {
     }
 }
 
+#[derive(Bundle)]
+struct BrickBundle {
+    sprite: Sprite,
+    transform: Transform,
+    brick: Brick,
+    collider: Collider,
+}
+
+impl BrickBundle {
+    fn new(brick_position: Vec2) -> Self {
+        Self {
+            sprite: Sprite {
+                color: BRICK_COLOR,
+                ..default()
+            },
+            transform: Transform {
+                translation: brick_position.extend(0.0),
+                scale: Vec3::new(BRICK_SIZE.x, BRICK_SIZE.y, 1.0),
+                ..default()
+            },
+            brick: Brick,
+            collider: Collider,
+        }
+    }
+}
+
 // Add the game's entities to our world
 fn setup(
     mut windows: Query<&mut Window>,
@@ -333,19 +359,7 @@ fn setup(
             );
 
             // brick
-            commands.spawn((
-                Sprite {
-                    color: BRICK_COLOR,
-                    ..default()
-                },
-                Transform {
-                    translation: brick_position.extend(0.0),
-                    scale: Vec3::new(BRICK_SIZE.x, BRICK_SIZE.y, 1.0),
-                    ..default()
-                },
-                Brick,
-                Collider,
-            ));
+            commands.spawn(BrickBundle::new(brick_position));
         }
     }
 }
