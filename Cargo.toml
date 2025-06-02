@@ -3,19 +3,12 @@ name = "bevy_sandbox"
 version = "0.1.0"
 edition = "2024"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[build]
-rustflags = ['--cfg getrandom_backend="wasm_js"']
+# [lib]
+# crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
-rand = "0.9.1"
-
-[dependencies.bevy]
-version = "0.16.1"
-features = ["dynamic_linking", "wayland"]
+bevy = { version = "0.16.1", features = ["dynamic_linking", "wayland"] }
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
@@ -27,7 +20,7 @@ opt-level = 3
 
 [[example]]
 name = "breakout"
-path = "src/lib.rs"
+path = "src/breakout.rs"
 doc-scrape-examples = true
 
 [package.metadata.example.breakout]
