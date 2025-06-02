@@ -5,7 +5,6 @@
 use bevy::{prelude::*, window::WindowMode};
 use constants::*;
 use events::*;
-use rand::Rng;
 use resources::*;
 use systems::*;
 
@@ -24,6 +23,7 @@ pub mod constants {
     pub const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, -50.0, 1.0);
     pub const BALL_DIAMETER: f32 = 30.;
     pub const BALL_SPEED: f32 = 400.0;
+    pub const BALL_SPEED_MULTIPLIER: f32 = 1.05; // Increase ball speed by 5% on each brick hit
     pub const INITIAL_BALL_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
 
     pub const WALL_THICKNESS: f32 = 10.0;
@@ -35,6 +35,11 @@ pub mod constants {
     pub const TOP_WALL: f32 = 300.;
 
     pub const BRICK_SIZE: Vec2 = Vec2::new(100., 30.);
+    // Normal, Speed, ExtraBall
+    pub const BRICK_TYPE_NORMAL_WEIGHT: f32 = 0.7;
+    pub const BRICK_TYPE_SPEED_WEIGHT: f32 = 0.2;
+    pub const BRICK_TYPE_EXTRA_BALL_WEIGHT: f32 = 0.1;
+
     // These values are exact
     pub const GAP_BETWEEN_PADDLE_AND_BRICKS: f32 = 270.0;
     pub const GAP_BETWEEN_BRICKS: f32 = 5.0;
@@ -81,6 +86,34 @@ pub mod components {
                 BrickType::Speed => BRICK_SPEED_COLOR,
                 BrickType::ExtraBall => BRICK_EXTRA_BALL_COLOR,
             }
+        }
+
+        pub fn weights() -> Vec<f32> {
+            Vec::from([
+                BRICK_TYPE_NORMAL_WEIGHT,
+                BRICK_TYPE_SPEED_WEIGHT,
+                BRICK_TYPE_EXTRA_BALL_WEIGHT,
+            ])
+        }
+
+        pub fn random() -> Self {
+            let random = getrandom::u32().unwrap_or(0);
+            let weights = Self::weights();
+            let total_weight: f32 = weights.iter().sum();
+            let mut cumulative_weight = 0.0;
+
+            for (i, &weight) in weights.iter().enumerate() {
+                cumulative_weight += weight / total_weight;
+                if (random as f32) / (u32::MAX as f32) < cumulative_weight {
+                    return match i {
+                        0 => BrickType::Normal,
+                        1 => BrickType::Speed,
+                        _ => BrickType::ExtraBall,
+                    };
+                }
+            }
+
+            BrickType::Normal // Fallback, should not happen
         }
     }
 
@@ -209,8 +242,8 @@ pub mod bundles {
 
     impl BallBundle {
         pub fn new(
-            mut meshes: ResMut<Assets<Mesh>>,
-            mut materials: ResMut<Assets<ColorMaterial>>,
+            meshes: &mut ResMut<Assets<Mesh>>,
+            materials: &mut ResMut<Assets<ColorMaterial>>,
         ) -> Self {
             Self {
                 mesh: Mesh2d(meshes.add(Circle::default())),
@@ -302,7 +335,7 @@ pub mod systems {
         commands.spawn(paddle_bundle);
 
         // Ball
-        commands.spawn(BallBundle::new(meshes, materials));
+        commands.spawn(BallBundle::new(&mut meshes, &mut materials));
 
         // Scoreboard
         commands.spawn((
@@ -365,7 +398,7 @@ pub mod systems {
         let offset_x = left_edge_of_bricks + BRICK_SIZE.x / 2.;
         let offset_y = bottom_edge_of_bricks + BRICK_SIZE.y / 2.;
 
-        let mut rng_color = rand::thread_rng();
+        // let mut rng_color = rand::thread_rng();
         for row in 0..n_rows {
             for column in 0..n_columns {
                 let brick_position = Vec2::new(
@@ -373,10 +406,8 @@ pub mod systems {
                     offset_y + row as f32 * (BRICK_SIZE.y + GAP_BETWEEN_BRICKS),
                 );
 
-                let n1: u8 = rng.gen();
-
                 // brick
-                commands.spawn(BrickBundle::new(brick_position, BrickType::default()));
+                commands.spawn(BrickBundle::new(brick_position, BrickType::random()));
             }
         }
     }
@@ -425,6 +456,8 @@ pub mod systems {
 
     pub fn check_for_collisions(
         mut commands: Commands,
+        mut meshes: ResMut<Assets<Mesh>>,
+        mut materials: ResMut<Assets<ColorMaterial>>,
         mut score: ResMut<Score>,
         ball_query: Single<(&mut Velocity, &Transform), With<Ball>>,
         collider_query: Query<(Entity, &Transform, Option<&Brick>), With<Collider>>,
@@ -445,10 +478,23 @@ pub mod systems {
                 // Writes a collision event so that other systems can react to the collision
                 collision_events.write_default();
 
-                // Bricks should be despawned and increment the scoreboard on collision
-                if maybe_brick.is_some() {
+                if let Some(brick) = maybe_brick {
+                    // Bricks should be despawned and increment the scoreboard on collision
                     commands.entity(collider_entity).despawn();
                     **score += 1;
+
+                    // If the brick was of type Speed, increase the ball speed
+                    match brick.r#type {
+                        BrickType::Normal => {}
+                        BrickType::Speed => {
+                            ball_velocity.x *= BALL_SPEED_MULTIPLIER;
+                            ball_velocity.y *= BALL_SPEED_MULTIPLIER;
+                        }
+                        BrickType::ExtraBall => {
+                            // If the brick was of type ExtraBall, spawn a new ball
+                            commands.spawn(BallBundle::new(&mut meshes, &mut materials));
+                        }
+                    }
                 }
 
                 // Reflect the ball's velocity when it collides
