@@ -7,6 +7,8 @@ edition = "2024"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
+rand = "0.9.1"
 
 [dependencies.bevy]
 version = "0.16.1"
