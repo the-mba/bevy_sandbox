@@ -23,7 +23,7 @@ pub mod constants {
     pub const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, -50.0, 1.0);
     pub const BALL_DIAMETER: f32 = 30.;
     pub const BALL_SPEED: f32 = 400.0;
-    pub const BALL_SPEED_MULTIPLIER: f32 = 1.05; // Increase ball speed by 5% on each brick hit
+    pub const BALL_SPEED_MULTIPLIER: f32 = 1.2; // Increase ball speed by 5% on each brick hit
     pub const INITIAL_BALL_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
 
     pub const WALL_THICKNESS: f32 = 10.0;
@@ -204,6 +204,7 @@ pub mod components {
 pub mod bundles {
     use super::components::*;
     use super::constants::*;
+    use crate::resources::*;
     use bevy::prelude::*;
     #[derive(Bundle)]
     pub struct PaddleBundle {
@@ -244,6 +245,7 @@ pub mod bundles {
         pub fn new(
             meshes: &mut ResMut<Assets<Mesh>>,
             materials: &mut ResMut<Assets<ColorMaterial>>,
+            ball_speed: &ResMut<Speed>,
         ) -> Self {
             Self {
                 mesh: Mesh2d(meshes.add(Circle::default())),
@@ -251,7 +253,7 @@ pub mod bundles {
                 transform: Transform::from_translation(BALL_STARTING_POSITION)
                     .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.0)),
                 ball: Ball,
-                velocity: Velocity(INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED),
+                velocity: Velocity(INITIAL_BALL_DIRECTION.normalize() * ball_speed.0),
             }
         }
     }
@@ -284,6 +286,7 @@ pub mod bundles {
 }
 
 pub mod resources {
+    use super::constants::*;
     use bevy::prelude::*;
     #[derive(Resource, Deref)]
     pub struct CollisionSound(pub Handle<AudioSource>);
@@ -291,6 +294,15 @@ pub mod resources {
     // This resource tracks the game's score
     #[derive(Resource, Deref, DerefMut)]
     pub struct Score(pub usize);
+
+    // This resource tracks the balls' speed
+    #[derive(Resource, Deref, DerefMut)]
+    pub struct Speed(pub f32);
+    impl Default for Speed {
+        fn default() -> Self {
+            Speed(BALL_SPEED)
+        }
+    }
 }
 
 pub mod events {
@@ -315,6 +327,7 @@ pub mod systems {
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<ColorMaterial>>,
         asset_server: Res<AssetServer>,
+        ball_speed: ResMut<Speed>,
     ) {
         // Set up the window
         let mut window = windows.single_mut().expect("No window found");
@@ -335,7 +348,7 @@ pub mod systems {
         commands.spawn(paddle_bundle);
 
         // Ball
-        commands.spawn(BallBundle::new(&mut meshes, &mut materials));
+        commands.spawn(BallBundle::new(&mut meshes, &mut materials, &ball_speed));
 
         // Scoreboard
         commands.spawn((
@@ -439,8 +452,13 @@ pub mod systems {
         paddle_transform.translation.x = new_paddle_position.clamp(left_bound, right_bound);
     }
 
-    pub fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
+    pub fn apply_velocity(
+        mut query: Query<(&mut Transform, &Velocity)>,
+        ball_speed: Res<Speed>,
+        time: Res<Time>,
+    ) {
         for (mut transform, velocity) in &mut query {
+            let velocity = velocity.normalize_or(Vec2::ONE) * ball_speed.0;
             transform.translation.x += velocity.x * time.delta_secs();
             transform.translation.y += velocity.y * time.delta_secs();
         }
@@ -459,65 +477,69 @@ pub mod systems {
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<ColorMaterial>>,
         mut score: ResMut<Score>,
-        ball_query: Single<(&mut Velocity, &Transform), With<Ball>>,
+        mut ball_speed: ResMut<Speed>,
+        mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
         collider_query: Query<(Entity, &Transform, Option<&Brick>), With<Collider>>,
         mut collision_events: EventWriter<CollisionEvent>,
     ) {
-        let (mut ball_velocity, ball_transform) = ball_query.into_inner();
+        for (mut ball_velocity, ball_transform) in &mut ball_query {
+            for (collider_entity, collider_transform, maybe_brick) in &collider_query {
+                let collision = ball_collision(
+                    BoundingCircle::new(ball_transform.translation.truncate(), BALL_DIAMETER / 2.),
+                    Aabb2d::new(
+                        collider_transform.translation.truncate(),
+                        collider_transform.scale.truncate() / 2.,
+                    ),
+                );
 
-        for (collider_entity, collider_transform, maybe_brick) in &collider_query {
-            let collision = ball_collision(
-                BoundingCircle::new(ball_transform.translation.truncate(), BALL_DIAMETER / 2.),
-                Aabb2d::new(
-                    collider_transform.translation.truncate(),
-                    collider_transform.scale.truncate() / 2.,
-                ),
-            );
+                if let Some(collision) = collision {
+                    // Writes a collision event so that other systems can react to the collision
+                    collision_events.write_default();
 
-            if let Some(collision) = collision {
-                // Writes a collision event so that other systems can react to the collision
-                collision_events.write_default();
+                    if let Some(brick) = maybe_brick {
+                        // Bricks should be despawned and increment the scoreboard on collision
+                        commands.entity(collider_entity).despawn();
+                        **score += 1;
 
-                if let Some(brick) = maybe_brick {
-                    // Bricks should be despawned and increment the scoreboard on collision
-                    commands.entity(collider_entity).despawn();
-                    **score += 1;
-
-                    // If the brick was of type Speed, increase the ball speed
-                    match brick.r#type {
-                        BrickType::Normal => {}
-                        BrickType::Speed => {
-                            ball_velocity.x *= BALL_SPEED_MULTIPLIER;
-                            ball_velocity.y *= BALL_SPEED_MULTIPLIER;
-                        }
-                        BrickType::ExtraBall => {
-                            // If the brick was of type ExtraBall, spawn a new ball
-                            commands.spawn(BallBundle::new(&mut meshes, &mut materials));
+                        // If the brick was of type Speed, increase the ball speed
+                        match brick.r#type {
+                            BrickType::Normal => {}
+                            BrickType::Speed => {
+                                ball_speed.0 *= BALL_SPEED_MULTIPLIER;
+                            }
+                            BrickType::ExtraBall => {
+                                // If the brick was of type ExtraBall, spawn a new ball
+                                commands.spawn(BallBundle::new(
+                                    &mut meshes,
+                                    &mut materials,
+                                    &ball_speed,
+                                ));
+                            }
                         }
                     }
-                }
 
-                // Reflect the ball's velocity when it collides
-                let mut reflect_x = false;
-                let mut reflect_y = false;
+                    // Reflect the ball's velocity when it collides
+                    let mut reflect_x = false;
+                    let mut reflect_y = false;
 
-                // Reflect only if the velocity is in the opposite direction of the collision
-                // This prevents the ball from getting stuck inside the bar
-                match collision {
-                    Collision::Left => reflect_x = ball_velocity.x > 0.0,
-                    Collision::Right => reflect_x = ball_velocity.x < 0.0,
-                    Collision::Top => reflect_y = ball_velocity.y < 0.0,
-                    Collision::Bottom => reflect_y = ball_velocity.y > 0.0,
-                }
+                    // Reflect only if the velocity is in the opposite direction of the collision
+                    // This prevents the ball from getting stuck inside the bar
+                    match collision {
+                        Collision::Left => reflect_x = ball_velocity.x > 0.0,
+                        Collision::Right => reflect_x = ball_velocity.x < 0.0,
+                        Collision::Top => reflect_y = ball_velocity.y < 0.0,
+                        Collision::Bottom => reflect_y = ball_velocity.y > 0.0,
+                    }
 
-                // Reflect velocity on the x-axis if we hit something on the x-axis
-                if reflect_x {
-                    ball_velocity.x = -ball_velocity.x;
-                }
+                    // Reflect velocity on the x-axis if we hit something on the x-axis
+                    if reflect_x {
+                        ball_velocity.x = -ball_velocity.x;
+                    }
 
-                // Reflect velocity on the y-axis if we hit something on the y-axis
-                if reflect_y {
-                    ball_velocity.y = -ball_velocity.y;
+                    // Reflect velocity on the y-axis if we hit something on the y-axis
+                    if reflect_y {
+                        ball_velocity.y = -ball_velocity.y;
+                    }
                 }
             }
         }
@@ -589,6 +611,7 @@ fn main() {
         // )
         .insert_resource(Score(0))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
+        .insert_resource(Speed::default())
         .add_event::<CollisionEvent>()
         .add_systems(Startup, setup)
         // Add our gameplay simulation systems to the fixed timestep schedule
