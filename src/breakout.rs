@@ -379,7 +379,7 @@ pub mod resources {
 pub mod events {
     use bevy::prelude::*;
     #[derive(Event, Default)]
-    pub struct CollisionEvent;
+    pub struct BallCollisionEvent;
 }
 
 pub mod systems {
@@ -393,7 +393,7 @@ pub mod systems {
 
     // Add the game's entities to our world
     pub fn setup(
-        mut windows: Query<&mut Window>,
+        mut window: Single<&mut Window>,
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<ColorMaterial>>,
@@ -401,7 +401,6 @@ pub mod systems {
         ball_speed: ResMut<Speed>,
     ) {
         // Set up the window
-        let mut window = windows.single_mut().expect("No window found");
         window.set_maximized(true);
 
         // Camera
@@ -419,7 +418,10 @@ pub mod systems {
         commands.spawn(paddle_bundle);
 
         // Ball
-        commands.spawn(BallBundle::new(&mut meshes, &mut materials, &ball_speed));
+        if SPAWN_BALLS {
+            // If we want to spawn a ball, we use the `BallBundle::new` method
+            commands.spawn(BallBundle::new(&mut meshes, &mut materials, &ball_speed));
+        }
 
         // Scoreboard
         commands.spawn((
@@ -535,6 +537,36 @@ pub mod systems {
         }
     }
 
+    pub fn spawn_bullets(
+        time: Res<Time>,
+        mut commands: Commands,
+        keyboard_input: Res<ButtonInput<KeyCode>>,
+        mut meshes: ResMut<Assets<Mesh>>,
+        mut materials: ResMut<Assets<ColorMaterial>>,
+        mut paddle_transform: Query<(&Transform, &mut BulletCooldown), With<Paddle>>,
+    ) {
+        for (paddle_transform, mut bullet_cooldown) in &mut paddle_transform {
+            bullet_cooldown.tick(time.delta());
+            if keyboard_input.pressed(KeyCode::Space) {
+                info!("Bullet timer: {:.2}", bullet_cooldown.elapsed_secs());
+                if bullet_cooldown.finished() {
+                    // Spawn a bullet at the paddle's position
+                    let bullet_position = paddle_transform.translation
+                        + Vec3::new(0.0, PADDLE_SIZE.y / 2.0 + BULLET_DIAMETER / 2.0, 0.0);
+
+                    commands.spawn(BulletBundle::new(
+                        &mut meshes,
+                        &mut materials,
+                        bullet_position,
+                    ));
+
+                    // Reset the bullet cooldown timer
+                    bullet_cooldown.reset();
+                }
+            }
+        }
+    }
+
     pub fn update_scoreboard(
         score: Res<Score>,
         score_root: Single<Entity, (With<ScoreboardUi>, With<Text>)>,
@@ -543,7 +575,7 @@ pub mod systems {
         *writer.text(*score_root, 1) = score.to_string();
     }
 
-    pub fn check_for_collisions(
+    pub fn check_for_ball_collisions(
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<ColorMaterial>>,
@@ -551,11 +583,11 @@ pub mod systems {
         mut ball_speed: ResMut<Speed>,
         mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
         collider_query: Query<(Entity, &Transform, Option<&Brick>), With<Collider>>,
-        mut collision_events: EventWriter<CollisionEvent>,
+        mut ball_collision_events: EventWriter<BallCollisionEvent>,
     ) {
         for (mut ball_velocity, ball_transform) in &mut ball_query {
             for (collider_entity, collider_transform, maybe_brick) in &collider_query {
-                let collision = ball_collision(
+                let collision = collision(
                     BoundingCircle::new(ball_transform.translation.truncate(), BALL_DIAMETER / 2.),
                     Aabb2d::new(
                         collider_transform.translation.truncate(),
@@ -565,7 +597,7 @@ pub mod systems {
 
                 if let Some(collision) = collision {
                     // Writes a collision event so that other systems can react to the collision
-                    collision_events.write_default();
+                    ball_collision_events.write_default();
 
                     if let Some(brick) = maybe_brick {
                         // Bricks should be despawned and increment the scoreboard on collision
@@ -616,9 +648,69 @@ pub mod systems {
         }
     }
 
+    pub fn check_for_bullet_collisions(
+        mut commands: Commands,
+        mut score: ResMut<Score>,
+        bullet_query: Query<(Entity, &Transform), With<Bullet>>,
+        collider_query: Query<(Entity, &Transform, Option<&Brick>), With<Collider>>,
+        mut bullet_collision_events: EventWriter<BallCollisionEvent>,
+    ) {
+        for (bullet_entity, bullet_transform) in bullet_query {
+            for (collider_entity, collider_transform, maybe_brick) in &collider_query {
+                let collision = collision(
+                    BoundingCircle::new(
+                        bullet_transform.translation.truncate(),
+                        BULLET_DIAMETER / 2.,
+                    ),
+                    Aabb2d::new(
+                        collider_transform.translation.truncate(),
+                        collider_transform.scale.truncate() / 2.,
+                    ),
+                );
+
+                if collision.is_some() {
+                    // Writes a collision event so that other systems can react to the collision
+                    bullet_collision_events.write_default();
+
+                    if maybe_brick.is_some() {
+                        // Bricks should be despawned and increment the scoreboard on collision
+                        commands.entity(collider_entity).despawn();
+                        **score += 1;
+                    }
+
+                    commands.entity(bullet_entity).despawn();
+                }
+            }
+        }
+    }
+
+    // Returns `Some` if `ball` collides with `bounding_box`.
+    // The returned `Collision` is the side of `bounding_box` that `ball` hit.
+    fn collision(circular_object: BoundingCircle, bounding_box: Aabb2d) -> Option<Collision> {
+        if !circular_object.intersects(&bounding_box) {
+            return None;
+        }
+
+        let closest = bounding_box.closest_point(circular_object.center());
+        let offset = circular_object.center() - closest;
+        let side = if offset.x.abs() > offset.y.abs() {
+            if offset.x < 0. {
+                Collision::Left
+            } else {
+                Collision::Right
+            }
+        } else if offset.y > 0. {
+            Collision::Top
+        } else {
+            Collision::Bottom
+        };
+
+        Some(side)
+    }
+
     pub fn play_collision_sound(
         mut commands: Commands,
-        mut collision_events: EventReader<CollisionEvent>,
+        mut collision_events: EventReader<BallCollisionEvent>,
         sound: Res<CollisionSound>,
     ) {
         // Play a sound once per frame if a collision occurred.
@@ -635,30 +727,6 @@ pub mod systems {
         Right,
         Top,
         Bottom,
-    }
-
-    // Returns `Some` if `ball` collides with `bounding_box`.
-    // The returned `Collision` is the side of `bounding_box` that `ball` hit.
-    fn ball_collision(ball: BoundingCircle, bounding_box: Aabb2d) -> Option<Collision> {
-        if !ball.intersects(&bounding_box) {
-            return None;
-        }
-
-        let closest = bounding_box.closest_point(ball.center());
-        let offset = ball.center() - closest;
-        let side = if offset.x.abs() > offset.y.abs() {
-            if offset.x < 0. {
-                Collision::Left
-            } else {
-                Collision::Right
-            }
-        } else if offset.y > 0. {
-            Collision::Top
-        } else {
-            Collision::Bottom
-        };
-
-        Some(side)
     }
 }
 
@@ -683,16 +751,18 @@ fn main() {
         .insert_resource(Score(0))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(Speed::default())
-        .add_event::<CollisionEvent>()
+        .add_event::<BallCollisionEvent>()
         .add_systems(Startup, setup)
         // Add our gameplay simulation systems to the fixed timestep schedule
         // which runs at 64 Hz by default
         .add_systems(
-            FixedUpdate,
+            Update,
             (
+                spawn_bullets,
                 apply_velocity,
                 move_paddle,
-                check_for_collisions,
+                check_for_ball_collisions,
+                check_for_bullet_collisions,
                 play_collision_sound,
             )
                 // `chain`ing systems together runs them in order
