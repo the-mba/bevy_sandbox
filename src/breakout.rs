@@ -254,6 +254,7 @@ pub mod bundles {
         pub sprite: Sprite,
         pub transform: Transform,
         pub paddle: Paddle,
+        pub bullet_cooldown: BulletCooldown,
         pub collider: Collider,
     }
 
@@ -270,6 +271,7 @@ pub mod bundles {
                     ..default()
                 },
                 paddle: Paddle,
+                bullet_cooldown: BulletCooldown::default(),
                 collider: Collider,
             }
         }
@@ -297,6 +299,32 @@ pub mod bundles {
                     .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.0)),
                 ball: Ball,
                 velocity: Velocity(INITIAL_BALL_DIRECTION.normalize() * ball_speed.0),
+            }
+        }
+    }
+
+    #[derive(Bundle)]
+    pub struct BulletBundle {
+        pub mesh: Mesh2d,
+        pub material: MeshMaterial2d<ColorMaterial>,
+        pub transform: Transform,
+        pub bullet: Bullet,
+        pub velocity: Velocity,
+    }
+
+    impl BulletBundle {
+        pub fn new(
+            meshes: &mut ResMut<Assets<Mesh>>,
+            materials: &mut ResMut<Assets<ColorMaterial>>,
+            starting_position: Vec3,
+        ) -> Self {
+            Self {
+                mesh: Mesh2d(meshes.add(Annulus::default())),
+                material: MeshMaterial2d(materials.add(BULLET_COLOR)),
+                transform: Transform::from_translation(starting_position)
+                    .with_scale(Vec2::splat(BULLET_DIAMETER).extend(1.0)),
+                bullet: Bullet,
+                velocity: Velocity(INITIAL_BULLET_DIRECTION * BULLET_SPEED),
             }
         }
     }
