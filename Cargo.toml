@@ -28,3 +28,14 @@ name = "Breakout"
 description = "An implementation of the classic game \"Breakout\"."
 category = "Games"
 wasm = true
+
+[[example]]
+name = "asteroids"
+path = "src/asteroids.rs"
+doc-scrape-examples = true
+
+[package.metadata.example.asteroids]
+name = "Asteroids"
+description = "An implementation of the classic game \"Asteroids\"."
+category = "Games"
+wasm = true
