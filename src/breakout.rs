@@ -11,6 +11,8 @@ use systems::*;
 pub mod constants {
     use bevy::prelude::*;
 
+    pub const SPAWN_BALLS: bool = false;
+
     // These constants are defined in `Transform` units.
     // Using the default 2D camera they correspond 1:1 with screen pixels.
     pub const PADDLE_SIZE: Vec2 = Vec2::new(120.0, 20.0);
