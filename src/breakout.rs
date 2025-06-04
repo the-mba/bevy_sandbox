@@ -28,6 +28,11 @@ pub mod constants {
     pub const BALL_SPEED_MULTIPLIER: f32 = 1.05; // Increase ball speed by 5% on each brick hit
     pub const INITIAL_BALL_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
 
+    pub const BULLET_DIAMETER: f32 = 10.;
+    pub const BULLET_SPEED: f32 = 1000.0;
+    pub const INITIAL_BULLET_DIRECTION: Vec2 = Vec2::Y;
+    pub const BULLET_COOLDOWN: f32 = 0.05; // Time in seconds before the next bullet can be fired
+
     pub const WALL_THICKNESS: f32 = 10.0;
     // x coordinates
     pub const LEFT_WALL: f32 = -800.;
@@ -55,6 +60,7 @@ pub mod constants {
     pub const BACKGROUND_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
     pub const PADDLE_COLOR: Color = Color::srgb(0.3, 0.3, 0.7);
     pub const BALL_COLOR: Color = Color::srgb(1.0, 0.5, 0.5);
+    pub const BULLET_COLOR: Color = Color::srgb(1.0, 0.0, 0.0);
     pub const BRICK_NORMAL_COLOR: Color = Color::srgb(0.5, 0.5, 1.0);
     pub const BRICK_SPEED_COLOR: Color = Color::srgb(0.5, 1.0, 0.5);
     pub const BRICK_EXTRA_BALL_COLOR: Color = Color::srgb(1.0, 1.0, 0.5);
