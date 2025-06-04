@@ -30,11 +30,11 @@ pub mod constants {
 
     pub const WALL_THICKNESS: f32 = 10.0;
     // x coordinates
-    pub const LEFT_WALL: f32 = -450.;
-    pub const RIGHT_WALL: f32 = 450.;
+    pub const LEFT_WALL: f32 = -800.;
+    pub const RIGHT_WALL: f32 = 800.;
     // y coordinates
-    pub const BOTTOM_WALL: f32 = -300.;
-    pub const TOP_WALL: f32 = 300.;
+    pub const BOTTOM_WALL: f32 = -450.;
+    pub const TOP_WALL: f32 = 400.;
 
     pub const BRICK_SIZE: Vec2 = Vec2::new(100., 30.);
     // Normal, Speed, ExtraBall
