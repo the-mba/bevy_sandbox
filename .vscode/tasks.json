@@ -27,10 +27,5 @@
             "type": "shell",
             "command": "cargo run --target wasm32-unknown-unknown --example breakout",
         },
-        {
-            "label": "Recompilar wasm-server-runner desde fuentes locales",
-            "type": "shell",
-            "command": "cargo uninstall wasm-server-runner; cargo install --path ./crates/wasm-server-runner-1.0.0",
-        },
     ]
 }
