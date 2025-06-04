@@ -25,7 +25,7 @@ pub mod constants {
     pub const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, -50.0, 1.0);
     pub const BALL_DIAMETER: f32 = 30.;
     pub const BALL_SPEED: f32 = 400.0;
-    pub const BALL_SPEED_MULTIPLIER: f32 = 1.2; // Increase ball speed by 5% on each brick hit
+    pub const BALL_SPEED_MULTIPLIER: f32 = 1.05; // Increase ball speed by 5% on each brick hit
     pub const INITIAL_BALL_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
 
     pub const WALL_THICKNESS: f32 = 10.0;
