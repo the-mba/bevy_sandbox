@@ -192,10 +192,10 @@ pub mod components {
         /// Location of the *center* of the wall, used in `transform.translation()`
         fn position(&self) -> Vec2 {
             match self {
-                WallLocation::Left => Vec2::new(LEFT_WALL, 0.),
-                WallLocation::Right => Vec2::new(RIGHT_WALL, 0.),
-                WallLocation::Bottom => Vec2::new(0., BOTTOM_WALL),
-                WallLocation::Top => Vec2::new(0., TOP_WALL),
+                WallLocation::Left => Vec2::new(LEFT_WALL, (TOP_WALL + BOTTOM_WALL) / 2.0),
+                WallLocation::Right => Vec2::new(RIGHT_WALL, (TOP_WALL + BOTTOM_WALL) / 2.0),
+                WallLocation::Bottom => Vec2::new((RIGHT_WALL + LEFT_WALL) / 2.0, BOTTOM_WALL),
+                WallLocation::Top => Vec2::new((RIGHT_WALL + LEFT_WALL) / 2.0, TOP_WALL),
             }
         }
 
