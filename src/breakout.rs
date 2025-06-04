@@ -110,6 +110,9 @@ pub mod components {
     #[derive(Component)]
     pub struct Ball;
 
+    #[derive(Component)]
+    pub struct Bullet;
+
     #[derive(Component, Deref, DerefMut)]
     pub struct Velocity(pub Vec2);
 
