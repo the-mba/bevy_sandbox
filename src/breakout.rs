@@ -70,10 +70,42 @@ pub mod constants {
 }
 
 pub mod components {
+    use std::time::Duration;
+
     use super::constants::*;
     use bevy::prelude::*;
     #[derive(Component)]
     pub struct Paddle;
+
+    #[derive(Component)]
+    pub struct BulletCooldown(Timer);
+
+    impl BulletCooldown {
+        pub fn reset(&mut self) {
+            self.0.reset();
+        }
+
+        pub fn tick(&mut self, delta: Duration) {
+            self.0.tick(delta);
+        }
+
+        pub fn elapsed_secs(&self) -> f32 {
+            self.0.elapsed_secs()
+        }
+
+        pub fn finished(&self) -> bool {
+            self.0.finished()
+        }
+    }
+
+    impl Default for BulletCooldown {
+        fn default() -> Self {
+            BulletCooldown(Timer::from_seconds(BULLET_COOLDOWN, TimerMode::Once))
+        }
+    }
+
+    #[derive(Component)]
+    pub struct RoundCollisionable;
 
     #[derive(Component)]
     pub struct Ball;
