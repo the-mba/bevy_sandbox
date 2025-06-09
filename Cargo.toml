@@ -31,7 +31,7 @@ wasm = true
 
 [[example]]
 name = "asteroids"
-path = "src/asteroids.rs"
+path = "src/asteroids/asteroids.rs"
 doc-scrape-examples = true
 
 [package.metadata.example.asteroids]

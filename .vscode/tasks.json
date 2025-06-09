@@ -5,7 +5,7 @@
         {
             "label": "Cargo Watch Build",
             "type": "shell",
-            "command": "cargo watch -c -w src -x 'build --example breakout'",
+            "command": "cargo watch -c -w src -x 'build --example asteroids'",
         },
         {
             "label": "Run Asteroids",

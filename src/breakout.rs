@@ -70,37 +70,41 @@ pub mod constants {
 }
 
 pub mod components {
-    use std::time::Duration;
-
     use super::constants::*;
     use bevy::prelude::*;
+    use std::time::Duration;
+
     #[derive(Component)]
     pub struct Paddle;
 
     #[derive(Component)]
-    pub struct BulletCooldown(Timer);
+    pub struct BulletCooldown {
+        a: Timer,
+    }
 
     impl BulletCooldown {
         pub fn reset(&mut self) {
-            self.0.reset();
+            self.a.reset();
         }
 
         pub fn tick(&mut self, delta: Duration) {
-            self.0.tick(delta);
+            self.a.tick(delta);
         }
 
         pub fn elapsed_secs(&self) -> f32 {
-            self.0.elapsed_secs()
+            self.a.elapsed_secs()
         }
 
         pub fn finished(&self) -> bool {
-            self.0.finished()
+            self.a.finished()
         }
     }
 
     impl Default for BulletCooldown {
         fn default() -> Self {
-            BulletCooldown(Timer::from_seconds(BULLET_COOLDOWN, TimerMode::Once))
+            BulletCooldown {
+                a: Timer::from_seconds(BULLET_COOLDOWN, TimerMode::Once),
+            }
         }
     }
 
@@ -247,8 +251,9 @@ pub mod components {
 pub mod bundles {
     use super::components::*;
     use super::constants::*;
-    use crate::resources::*;
+    use super::resources::*;
     use bevy::prelude::*;
+
     #[derive(Bundle)]
     pub struct PaddleBundle {
         pub sprite: Sprite,
@@ -256,6 +261,7 @@ pub mod bundles {
         pub paddle: Paddle,
         pub bullet_cooldown: BulletCooldown,
         pub collider: Collider,
+        pub velocity: Velocity,
     }
 
     impl Default for PaddleBundle {
@@ -273,6 +279,7 @@ pub mod bundles {
                 paddle: Paddle,
                 bullet_cooldown: BulletCooldown::default(),
                 collider: Collider,
+                velocity: Velocity(Vec2::ZERO),
             }
         }
     }
@@ -298,7 +305,7 @@ pub mod bundles {
                 transform: Transform::from_translation(BALL_STARTING_POSITION)
                     .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.0)),
                 ball: Ball,
-                velocity: Velocity(INITIAL_BALL_DIRECTION.normalize() * ball_speed.0),
+                velocity: Velocity(INITIAL_BALL_DIRECTION.normalize() * ball_speed.a),
             }
         }
     }
@@ -359,19 +366,27 @@ pub mod bundles {
 pub mod resources {
     use super::constants::*;
     use bevy::prelude::*;
+
     #[derive(Resource, Deref)]
-    pub struct CollisionSound(pub Handle<AudioSource>);
+    pub struct CollisionSound {
+        pub a: Handle<AudioSource>,
+    }
 
     // This resource tracks the game's score
     #[derive(Resource, Deref, DerefMut)]
-    pub struct Score(pub usize);
+    pub struct Score {
+        pub a: usize,
+    }
 
-    // This resource tracks the balls' speed
+    // This resource tracks the game's score
     #[derive(Resource, Deref, DerefMut)]
-    pub struct Speed(pub f32);
+    pub struct Speed {
+        pub a: f32,
+    }
+
     impl Default for Speed {
         fn default() -> Self {
-            Speed(BALL_SPEED)
+            Speed { a: BALL_SPEED }
         }
     }
 }
@@ -408,7 +423,9 @@ pub mod systems {
 
         // Sound
         let ball_collision_sound = asset_server.load("sounds/breakout_collision.ogg");
-        commands.insert_resource(CollisionSound(ball_collision_sound));
+        commands.insert_resource(CollisionSound {
+            a: ball_collision_sound,
+        });
 
         // Paddle
         let paddle_y = BOTTOM_WALL + GAP_BETWEEN_PADDLE_AND_FLOOR;
@@ -531,7 +548,7 @@ pub mod systems {
         time: Res<Time>,
     ) {
         for (mut transform, velocity) in &mut query {
-            let velocity = velocity.normalize_or(Vec2::ONE) * ball_speed.0;
+            let velocity = velocity.normalize_or_zero() * ball_speed.a;
             transform.translation.x += velocity.x * time.delta_secs();
             transform.translation.y += velocity.y * time.delta_secs();
         }
@@ -551,8 +568,8 @@ pub mod systems {
                 info!("Bullet timer: {:.2}", bullet_cooldown.elapsed_secs());
                 if bullet_cooldown.finished() {
                     // Spawn a bullet at the paddle's position
-                    let bullet_position = paddle_transform.translation
-                        + Vec3::new(0.0, PADDLE_SIZE.y / 2.0 + BULLET_DIAMETER / 2.0, 0.0);
+                    let bullet_position =
+                        paddle_transform.translation + Vec3::new(0.0, PADDLE_SIZE.y / 2.0, 0.0);
 
                     commands.spawn(BulletBundle::new(
                         &mut meshes,
@@ -608,7 +625,7 @@ pub mod systems {
                         match brick.r#type {
                             BrickType::Normal => {}
                             BrickType::Speed => {
-                                ball_speed.0 *= BALL_SPEED_MULTIPLIER;
+                                ball_speed.a *= BALL_SPEED_MULTIPLIER;
                             }
                             BrickType::ExtraBall => {
                                 // If the brick was of type ExtraBall, spawn a new ball
@@ -652,7 +669,10 @@ pub mod systems {
         mut commands: Commands,
         mut score: ResMut<Score>,
         bullet_query: Query<(Entity, &Transform), With<Bullet>>,
-        collider_query: Query<(Entity, &Transform, Option<&Brick>), With<Collider>>,
+        collider_query: Query<
+            (Entity, &Transform, Option<&Brick>),
+            (With<Collider>, Without<Paddle>),
+        >,
         mut bullet_collision_events: EventWriter<BallCollisionEvent>,
     ) {
         for (bullet_entity, bullet_transform) in bullet_query {
@@ -677,7 +697,7 @@ pub mod systems {
                         commands.entity(collider_entity).despawn();
                         **score += 1;
                     }
-
+                    info!("Bullet collided with {:?}", collider_entity);
                     commands.entity(bullet_entity).despawn();
                 }
             }
@@ -748,7 +768,7 @@ fn main() {
         //         .add_schedule(FixedUpdate)
         //         .at(Val::Percent(35.0), Val::Percent(50.0)),
         // )
-        .insert_resource(Score(0))
+        .insert_resource(Score { a: 0 })
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(Speed::default())
         .add_event::<BallCollisionEvent>()
