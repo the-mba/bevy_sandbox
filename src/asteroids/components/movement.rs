@@ -1,5 +1,5 @@
 pub mod acceleration;
-pub mod velocity;
+pub mod is_braking;
 
 pub use acceleration::*;
-pub use velocity::*;
+pub use is_braking::*;

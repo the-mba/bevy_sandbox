@@ -3,6 +3,7 @@
 //! Demonstrates Bevy's stepping capabilities if compiled with the `bevy_debug_stepping` feature.
 
 use bevy::{prelude::*, window::WindowMode};
+use bevy_rapier2d::prelude::*;
 
 mod bundles;
 mod components;
@@ -30,6 +31,7 @@ fn main() {
     };
     App::new()
         .add_plugins(DefaultPlugins.set(window_plugin))
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         // The stepping plugin is optional and can be used to control the game's update rate
         // .add_plugins(
         //     stepping::SteppingPlugin::default()
@@ -38,22 +40,27 @@ fn main() {
         //         .at(Val::Percent(35.0), Val::Percent(50.0)),
         // )
         .insert_resource(ClearColor(BACKGROUND_COLOR))
+        .insert_resource(BallCooldown::default())
         .add_event::<BallCollisionEvent>()
         .add_systems(Startup, setup)
         .add_systems(
             FixedUpdate,
             (
-                spawn_bullets,
+                calculate_player_orientation,
+                spawn_attacks,
                 spawn_balls,
-                calculate_player_acceleration,
-                calculate_player_velocity.after(calculate_player_acceleration),
-                apply_velocity.after(calculate_player_velocity),
-                window_collision.after(apply_velocity),
+                calculate_acceleration,
+                calculate_player_velocity,
+                calculate_ball_velocity,
+                apply_velocity,
+                window_collision,
                 check_for_ball_collisions,
                 check_for_bullet_collisions,
+                despawn,
                 play_collision_sound,
                 update_scoreboard,
-            ),
+            )
+                .chain(),
         )
         .run();
 }
