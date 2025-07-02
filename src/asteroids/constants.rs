@@ -1,7 +1,7 @@
 use bevy::{
     color::Color,
     input::{gamepad::GamepadButton, keyboard::KeyCode},
-    prelude::Vec2,
+    prelude::*,
     ui::Val,
 };
 
@@ -23,7 +23,8 @@ pub const BALL_SPEED: f32 = 400.0;
 pub const BALL_COOLDOWN: f32 = 1.0; // Time in seconds before the next ball spawns
 
 // * BULLET *
-pub const BULLET_RADIUS: f32 = 5.0;
+pub const BULLET_INNER_RADIUS: f32 = 2.5;
+pub const BULLET_OUTER_RADIUS: f32 = 5.0;
 pub const BULLET_SPEED: f32 = 1500.0;
 pub const BULLET_COOLDOWN: f32 = 0.05; // Time in seconds before the next bullet can be fired
 

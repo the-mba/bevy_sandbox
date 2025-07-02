@@ -72,7 +72,7 @@ pub mod constants {
 pub mod components {
     use super::constants::*;
     use bevy::prelude::*;
-    use std::time::Duration;
+    use std::time::*;
 
     #[derive(Component)]
     pub struct Paddle;
@@ -403,7 +403,7 @@ pub mod systems {
     use super::constants::*;
     use super::events::*;
     use super::resources::*;
-    use bevy::math::bounding::{Aabb2d, BoundingCircle, BoundingVolume, IntersectsVolume};
+    use bevy::math::bounding::*;
     use bevy::prelude::*;
 
     // Add the game's entities to our world

@@ -1,4 +1,5 @@
 use super::constants::BALL_COOLDOWN;
+use bevy::math::Vec2;
 use bevy::prelude::Deref;
 use bevy::prelude::DerefMut;
 use bevy::prelude::Timer;
@@ -21,4 +22,14 @@ impl Default for BallCooldown {
             a: Timer::from_seconds(BALL_COOLDOWN, TimerMode::Once),
         }
     }
+}
+
+#[derive(Resource, Debug, Default, Deref)]
+pub struct MouseCoords {
+    pub a: Option<Vec2>,
+}
+
+#[derive(Resource, Debug, Default, Deref)]
+pub struct MouseWorldCoords {
+    pub a: Option<Vec2>,
 }

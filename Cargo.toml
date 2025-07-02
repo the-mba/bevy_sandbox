@@ -9,7 +9,8 @@ edition = "2024"
 [dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
 bevy = { version = "0.16.1", features = ["dynamic_linking", "wayland"] }
-bevy_rapier2d = { version = "0.30.0", features = [] }
+avian2d = "0.3.1"
+derive_more = { version = "2.0.1", features = ["display"] }
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
@@ -39,4 +40,15 @@ doc-scrape-examples = true
 name = "Asteroids"
 description = "An implementation of the classic game \"Asteroids\"."
 category = "Games"
+wasm = true
+
+[[example]]
+name = "example_tnua"
+path = "src/example_tnua.rs"
+doc-scrape-examples = true
+
+[package.metadata.example.example_tnua]
+name = "example_tnua"
+description = "https://vscode.dev/github/idanarye/bevy-tnua/blob/main/examples/example.rs"
+category = "Example"
 wasm = true

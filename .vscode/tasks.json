@@ -27,5 +27,10 @@
             "type": "shell",
             "command": "cargo run --target wasm32-unknown-unknown --example breakout",
         },
+        {
+            "label": "Run example_tnua",
+            "type": "shell",
+            "command": "cargo run --example example_tnua",
+        },
     ]
 }

@@ -1,12 +1,7 @@
-use bevy::prelude::Component;
+use bevy::prelude::*;
+use derive_more::Display;
 
-#[derive(Component)]
+#[derive(Component, Default, Deref, DerefMut, Display)]
 pub struct Score {
     pub a: usize,
-}
-
-impl Default for Score {
-    fn default() -> Self {
-        Score { a: 0 }
-    }
 }

@@ -2,10 +2,11 @@
 //!
 //! Demonstrates Bevy's stepping capabilities if compiled with the `bevy_debug_stepping` feature.
 
+use avian2d::prelude::*;
 use bevy::{prelude::*, window::WindowMode};
-use bevy_rapier2d::prelude::*;
 
 mod bundles;
+mod character_controller_plugin;
 mod components;
 mod constants;
 mod events;
@@ -13,6 +14,7 @@ mod resources;
 mod systems;
 
 pub use bundles::*;
+pub use character_controller_plugin::*;
 pub use components::*;
 pub use constants::*;
 pub use events::*;
@@ -29,9 +31,13 @@ fn main() {
         }),
         ..default()
     };
+
     App::new()
-        .add_plugins(DefaultPlugins.set(window_plugin))
-        .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
+        .add_plugins((
+            DefaultPlugins.set(window_plugin),
+            PhysicsPlugins::default().with_length_unit(20.0),
+            CharacterControllerPlugin,
+        ))
         // The stepping plugin is optional and can be used to control the game's update rate
         // .add_plugins(
         //     stepping::SteppingPlugin::default()
@@ -41,26 +47,24 @@ fn main() {
         // )
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(BallCooldown::default())
+        .insert_resource(Gravity(Vec2::ZERO))
+        .insert_resource(MouseCoords::default())
+        .insert_resource(MouseWorldCoords::default())
         .add_event::<BallCollisionEvent>()
+        .add_event::<DestroyedEvent>()
         .add_systems(Startup, setup)
         .add_systems(
-            FixedUpdate,
+            Update,
             (
-                calculate_player_orientation,
+                update_mouse_coords,
                 spawn_attacks,
                 spawn_balls,
-                calculate_acceleration,
-                calculate_player_velocity,
-                calculate_ball_velocity,
-                apply_velocity,
-                window_collision,
-                check_for_ball_collisions,
-                check_for_bullet_collisions,
                 despawn,
                 play_collision_sound,
                 update_scoreboard,
             )
                 .chain(),
         )
+        .with_collision_hooks::<BulletCollisionHooks>(),
         .run();
 }
