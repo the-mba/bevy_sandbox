@@ -41,14 +41,3 @@ name = "Asteroids"
 description = "An implementation of the classic game \"Asteroids\"."
 category = "Games"
 wasm = true
-
-[[example]]
-name = "example_tnua"
-path = "src/example_tnua.rs"
-doc-scrape-examples = true
-
-[package.metadata.example.example_tnua]
-name = "example_tnua"
-description = "https://vscode.dev/github/idanarye/bevy-tnua/blob/main/examples/example.rs"
-category = "Example"
-wasm = true

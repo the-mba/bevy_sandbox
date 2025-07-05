@@ -76,22 +76,6 @@ pub fn setup(
     ));
 }
 
-pub fn detect_bullet_player_collision(
-    mut commands: Commands,
-    q_bullets: Query<(Entity, &CollidingEntities), With<Bullet>>,
-    q_player: Single<Entity, With<Player>>,
-) {
-    for (entity, colliding_entities) in &q_bullets {
-        // Check if the bullet collided with a player
-        if let None = colliding_entities
-            .iter()
-            .find(|&&e| e == q_player.to_owned())
-        {
-            commands.entity(entity).remove::<JustFired>();
-        }
-    }
-}
-
 pub fn spawn_attacks(
     time: Res<Time>,
     mut commands: Commands,
@@ -115,18 +99,19 @@ pub fn spawn_attacks(
         if gamepad_fire_bullet || r_keyboard_input.pressed(KEYBOARD_BULLET_BUTTON) {
             if bullet_cooldown.finished() {
                 // Spawn a bullet at the paddle's position
-                let bullet_position = player_transform;
+                let mut bullet_transform = player_transform.clone();
+                bullet_transform.translation +=
+                    player_transform.rotation.mul_vec3(Vec3::X * BULLET_OFFSET);
+
                 let bullet_velocity =
                     (player_transform.rotation.mul_vec3(Vec3::X) * BULLET_SPEED).truncate();
 
-                commands
-                    .spawn(BulletBundle::new(
-                        &mut r_mesh,
-                        &mut r_material,
-                        *bullet_position,
-                        bullet_velocity,
-                    ))
-                    .insert(JustFired);
+                commands.spawn(BulletBundle::new(
+                    &mut r_mesh,
+                    &mut r_material,
+                    bullet_transform,
+                    bullet_velocity,
+                ));
 
                 // Reset the bullet cooldown timer
                 bullet_cooldown.reset();

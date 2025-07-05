@@ -65,6 +65,5 @@ fn main() {
             )
                 .chain(),
         )
-        .with_collision_hooks::<BulletCollisionHooks>(),
         .run();
 }

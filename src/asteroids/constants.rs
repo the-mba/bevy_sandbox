@@ -27,6 +27,7 @@ pub const BULLET_INNER_RADIUS: f32 = 2.5;
 pub const BULLET_OUTER_RADIUS: f32 = 5.0;
 pub const BULLET_SPEED: f32 = 1500.0;
 pub const BULLET_COOLDOWN: f32 = 0.05; // Time in seconds before the next bullet can be fired
+pub const BULLET_OFFSET: f32 = 20.0; // Offset from the player position to spawn the bullet
 
 // * LASER *
 pub const LASER_LENGTH: f32 = 100.0;
